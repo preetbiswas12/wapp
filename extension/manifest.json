@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "WA Auto-Sender & Classifier",
+  "version": "1.0.0",
+  "description": "Human-in-the-loop WhatsApp Web auto-reply with AI classification and strict dedupe.",
+  "permissions": ["storage", "scripting", "tabs", "activeTab"],
+  "host_permissions": ["*://web.whatsapp.com/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "WA Auto-Sender"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["dashboard/*"],
+      "matches": ["*://web.whatsapp.com/*", "<all_urls>"]
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

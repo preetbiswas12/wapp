@@ -1,0 +1,13 @@
+/* content.css - minimal overlay styles for the WhatsApp Web automation */
+.wa-as-overlay {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  background: #075e54;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  z-index: 9999;
+  opacity: .9;
+}
