@@ -29,11 +29,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     );
     return true;
   }
-  if (msg.type === 'SET_API_KEY') {
-    provider.setApiKey(msg.apiKey);
-    sendResponse({ ok: true });
-    return true;
-  }
+    if (msg.type === 'SET_API_KEY') {
+      provider.setApiKey(msg.apiKey);
+      sendResponse({ ok: true });
+      return true;
+    }
+    if (msg.type === 'SEND_MESSAGE') {
+      try {
+        const sent = await sendReply(msg.text, { delayMs: 0 });
+        if (sent) {
+          await store.recordSend(
+            msg.chatId, msg.contactName, msg.phone,
+            msg.category || 'manual', msg.text
+          );
+          sendResponse({ ok: true });
+        } else {
+          sendResponse({ ok: false, error: 'send_failed' });
+        }
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message });
+      }
+      return true;
+    }
   if (msg.type === 'SET_CATEGORY') {
     store.setCategory(msg.category, msg.template).then(() => sendResponse({ ok: true }));
     return true;
@@ -87,9 +104,13 @@ async function _processMessage(msgEl) {
     // Classify.
     const classification = await provider.classify(ctx);
 
-    // If no template for this category, queue for human review.
+    const settings = await store.getSettings();
+    const mode = (settings && settings.mode) || 'auto';
+
     const existing = await store.getCategory(classification.category);
-    if (!existing) {
+    // In human-decides mode, always route to review so the human chooses
+    // whether to send the AI suggestion or a manual reply.
+    if (mode === 'human' || !existing) {
       await store.addPending(
         { ...ctx, msgEl: undefined },
         classification
@@ -98,7 +119,7 @@ async function _processMessage(msgEl) {
       return;
     }
 
-    // Template exists -> attempt auto-send (with dedupe + anti-ban).
+    // Auto mode + approved template exists -> auto-send (dedupe + anti-ban).
     await _queueSend(ctx, classification, existing.template);
   } catch (e) {
     console.error('processMessage failed', e);

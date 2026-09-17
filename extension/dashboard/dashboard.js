@@ -26,6 +26,17 @@ function send(msg) {
   });
 }
 
+async function _oneOffSend(p, text) {
+  return send({
+    type: 'SEND_MESSAGE',
+    chatId: p.message.chatId,
+    contactName: p.message.contactName,
+    phone: p.message.phone,
+    category: p.classification.category,
+    text,
+  });
+}
+
 async function loadState() {
   const res = await send({ type: 'GET_STATE' });
   if (res) state = { ...state, ...res };
@@ -63,8 +74,10 @@ function renderPending() {
       <div class="text">${esc(p.message.text || '')}</div>
       <div class="meta">suggested: ${esc(p.classification.suggestedReply || 'none')}</div>
       <div class="actions">
-        <button data-act="approve">Approve</button>
-        <button data-act="edit">Edit & Approve</button>
+        <button data-act="send-ai">Send AI Reply</button>
+        <button data-act="send-manual">Send Manual</button>
+        <button data-act="approve">Approve & Auto-send</button>
+        <button data-act="edit">Edit &amp; Approve</button>
         <button data-act="reject">Reject</button>
         <button data-act="skip">Skip</button>
       </div>
@@ -74,10 +87,38 @@ function renderPending() {
     card.querySelectorAll('button').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = card.dataset.id;
+        const p = state.pending.find(item => item.id === id);
+        if (!p) return;
         let edited = undefined;
         if (btn.dataset.act === 'edit') {
-          edited = prompt('Edit reply:', '');
+          edited = prompt('Edit reply:', p.classification.suggestedReply || '');
           if (edited === null) return;
+        }
+        if (btn.dataset.act === 'send-manual') {
+          const manual = prompt('Your reply:', '');
+          if (!manual) return;
+          const res = await _oneOffSend(p, manual);
+          if (res.ok) {
+            await send({ type: 'RESOLVE_PENDING', id, action: 'sent' });
+            toast('sent');
+            await refreshPending();
+          } else {
+            toast(res.error || 'send failed');
+          }
+          return;
+        }
+        if (btn.dataset.act === 'send-ai') {
+          const reply = p.classification.suggestedReply;
+          if (!reply) { toast('no suggested reply'); return; }
+          const res = await _oneOffSend(p, reply);
+          if (res.ok) {
+            await send({ type: 'RESOLVE_PENDING', id, action: 'sent' });
+            toast('sent');
+            await refreshPending();
+          } else {
+            toast(res.error || 'send failed');
+          }
+          return;
         }
         const res = await send({ type: 'RESOLVE_PENDING', id, action: btn.dataset.act, editedReply: edited });
         if (res && res.ok) {
@@ -135,6 +176,7 @@ function renderCategories() {
 // ---- Settings ----
 function fillSettings() {
   $('#provider').value = state.settings.provider || 'kilo';
+  $('#mode').value = state.settings.mode || 'auto';
   $('#apiKey').value = state.settings.apiKey || '';
   $('#dedupeWindowMs').value = state.settings.dedupeWindowMs || 86400000;
   $('#minSendDelayMs').value = state.settings.minSendDelayMs || 3000;
@@ -144,6 +186,7 @@ $('#settingsForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const patch = {
     provider: $('#provider').value,
+    mode: $('#mode').value,
     apiKey: $('#apiKey').value,
     dedupeWindowMs: parseInt($( '#dedupeWindowMs').value, 10) || 86400000,
     minSendDelayMs: parseInt($( '#minSendDelayMs').value, 10) || 3000,

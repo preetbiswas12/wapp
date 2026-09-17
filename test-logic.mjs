@@ -134,5 +134,15 @@ function check(name, cond) {
   check('config has webex', types.includes('webex'));
 }
 
+// 11. Mode setting toggles between auto / human-decides
+{
+  const s = new StateStore();
+  const defaults = await s.getSettings();
+  check('default mode is auto', (defaults.mode || 'auto') === 'auto');
+  await s.setSettings({ mode: 'human' });
+  const updated = await s.getSettings();
+  check('setSettings stores mode human', updated.mode === 'human');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

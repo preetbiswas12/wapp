@@ -27,10 +27,26 @@ async function refresh() {
   }
 }
 
-toggleBtn.addEventListener('click', () => {
-  chrome.runtime.sendMessage({ type: 'TOGGLE_ENABLED' });
-  toggleBtn.textContent = toggleBtn.textContent === 'Enable' ? 'Disable' : 'Enable';
+toggleBtn.addEventListener('click', async () => {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
+    const mode = (res && res.settings && res.settings.mode) || 'auto';
+    const next = mode === 'human' ? 'auto' : 'human';
+    await chrome.runtime.sendMessage({ type: 'SET_SETTINGS', settings: { mode: next } });
+    toggleBtn.textContent = next === 'human' ? 'Human mode' : 'Auto mode';
+  } catch (e) {
+    toggleBtn.textContent = 'Error';
+  }
 });
+
+async function refreshToggle() {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
+    const mode = (res && res.settings && res.settings.mode) || 'auto';
+    toggleBtn.textContent = mode === 'human' ? 'Human mode' : 'Auto mode';
+  } catch {}
+}
 
 setInterval(refresh, 2000);
 refresh();
+refreshToggle();

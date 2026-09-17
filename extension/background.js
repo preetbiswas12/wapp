@@ -118,6 +118,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: true });
       return;
     }
+    if (msg.type === 'SEND_MESSAGE') {
+      let resp = { ok: false, error: 'no_whatsapp_tab' };
+      const tabs = await chrome.tabs.query({ url: ['*://web.whatsapp.com/*'] });
+      for (const tab of tabs) {
+        try {
+          const r = await chrome.tabs.sendMessage(tab.id, msg);
+          if (r && typeof r === 'object') {
+            resp = r;
+            break;
+          }
+        } catch {}
+      }
+      sendResponse(resp);
+      return;
+    }
     sendResponse({ ok: false, error: 'unknown' });
   })();
   return true;

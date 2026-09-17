@@ -44,6 +44,12 @@
             <option value="local">Local (Ollama)</option>
           </select>
         </label>
+        <label>Mode
+          <select id="mode">
+            <option value="auto">Auto (auto-send after approval)</option>
+            <option value="human">Human decides each reply</option>
+          </select>
+        </label>
         <label>API Key <input type="password" id="apiKey" /></label>
         <label>Dedupe window (ms)
           <input type="number" id="dedupeWindowMs" />
